@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const app = express();
 
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
 const AUTO_LOCK = process.env.AUTO_LOCK === "true";
 const AUTO_LOCK_DELAY = Number(process.env.AUTO_LOCK_DELAY) || 2000;
@@ -34,10 +35,34 @@ function authenticateApiKey(req, res, next) {
     next();
 }
 
+function getLockSupportError() {
+    if (process.platform !== "linux") {
+        return "Screen locking is only supported on Linux hosts.";
+    }
+
+    if (!process.env.XDG_SESSION_ID && !process.env.DBUS_SESSION_BUS_ADDRESS) {
+        return "No desktop session was detected. Screen locking is not available in headless or container environments.";
+    }
+
+    return null;
+}
+
 /**
  * Lock the current Ubuntu/Linux user session.
  */
 function lockScreen(callback) {
+    const lockSupportError = getLockSupportError();
+
+    if (lockSupportError) {
+        callback({
+            success: false,
+            message: "Could not lock the screen.",
+            error: lockSupportError,
+        });
+
+        return;
+    }
+
     execFile("loginctl", ["lock-session"], (error, stdout, stderr) => {
         if (error) {
             callback({
@@ -71,12 +96,13 @@ app.get("/", (req, res) => {
  */
 app.post("/api/device/lock", authenticateApiKey, (req, res) => {
     lockScreen((result) => {
-        res.status(result.success ? 200 : 500).json(result);
+        const statusCode = result.success ? 200 : 503;
+        res.status(statusCode).json(result);
     });
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-    console.log(`Device Screen API: http://127.0.0.1:${PORT}`);
+app.listen(PORT, HOST, () => {
+    console.log(`Device Screen API: http://${HOST}:${PORT}`);
 
     if (AUTO_LOCK) {
         console.log(`Screen will lock after ${AUTO_LOCK_DELAY} milliseconds.`);

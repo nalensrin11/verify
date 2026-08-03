@@ -1,0 +1,14 @@
+{
+  "name": "device-screen-api",
+  "version": "1.0.0",
+  "description": "A local Node.js API for locking an Ubuntu device screen",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.0",
+    "express": "^5.0.0"
+  }
+}

@@ -16,7 +16,7 @@ app.use(express.json());
  * Protect the API with an API key.
  */
 function authenticateApiKey(req, res, next) {
-    const providedApiKey = req.header("x-api-key");
+    const providedApiKey = req.header("x-api-key") || req.query.key;
 
     if (!API_KEY) {
         return res.status(500).json({
@@ -82,9 +82,21 @@ function lockScreen(callback) {
 }
 
 /**
- * Health-check API.
+ * Browser-friendly lock trigger.
  */
 app.get("/", (req, res) => {
+    authenticateApiKey(req, res, () => {
+        lockScreen((result) => {
+            const statusCode = result.success ? 200 : 503;
+            res.status(statusCode).json(result);
+        });
+    });
+});
+
+/**
+ * Health-check API.
+ */
+app.get("/health", (req, res) => {
     res.json({
         success: true,
         message: "Device Screen API is running.",
